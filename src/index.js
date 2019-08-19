@@ -5,7 +5,7 @@ module.exports = homebridge => {
   instance.homebridge = homebridge;
 
   homebridge.registerAccessory(
-    'homebridge-chamberlain',
+    'chamberlain',
     'Chamberlain',
     ChamberlainAccessory
   );

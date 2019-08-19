@@ -1,21 +1,26 @@
 {
-  "name": "homebridge-chamberlain",
+  "name": "@hoobs/chamberlain",
   "version": "1.0.4",
+  "description": "Chamberlain myQ integration for HOOBS",
   "author": "Casey Foster <c@sey.me>",
   "license": "MIT",
   "main": "src",
   "repository": {
     "type": "git",
-    "url": "https://github.com/caseywebdev/homebridge-chamberlain"
+    "url": "https://github.com/hoobs-org/homebridge-chamberlain"
   },
   "keywords": [
-    "homebridge-plugin"
+    "hoobs-certified",
+    "category_outdoor",
+    "category_security",
+    "hoobs-plugin"
   ],
   "dependencies": {
     "node-fetch": "1",
     "underscore": "1.8.3"
   },
   "engines": {
-    "homebridge": "x"
+    "node": ">=7.0.0",
+    "homebridge": ">=0.4.22"
   }
 }

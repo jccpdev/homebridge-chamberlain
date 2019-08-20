@@ -1,35 +1,11 @@
-# homebridge-chamberlain
+# ![](https://raw.githubusercontent.com/hoobs-org/homebridge-chamberlain/master/branding/logo.png)
 
-A Homebridge plugin for Chamberlain garage door openers with MyQ.
+This adds support for myQ garage door openers and bridges by Chamberlain and ListMaster.
 
-First set up your mychamberlain.com account, then add to your `config.json` in
-the `accessories` array:
+## Credits
 
-```json
-{
-  "accessory": "Chamberlain",
-  "name": "Garage Door",
-  "username": "your mychamberlain.com email",
-  "password": "your mychamberlain.com password"
-}
-```
+This is the HOOBS version of the [homebridge-chamberlain](https://github.com/caseywebdev/homebridge-chamberlain) plugin by [Casey Foster](https://github.com/caseywebdev).
 
-If you have multiple garage doors, the plugin will throw an error and list the controllable device IDs. Use those IDs to create individual accessories. Be sure to uniquely name the door via the "name" field, otherwise you'll get a UUID error in the console (`Error: Cannot add a bridged Accessory with the same UUID as another bridged Accessory`).
 
-```json
-{
-  "accessory": "Chamberlain",
-  "name": "Main Garage Door",
-  "username": "your mychamberlain.com email",
-  "password": "your mychamberlain.com password",
-  "deviceId": "xxx"
-},
-{
-  "accessory": "Chamberlain",
-  "name": "Side Garage Door",
-  "username": "your mychamberlain.com email",
-  "password": "your mychamberlain.com password",
-  "deviceId": "xxx"
-},
-...
-```
+Apple, HomeKit and the Apple Home icon are registered trademarks of Apple Inc.  
+Chamberlain, ListMaster, myQ and the myQ logo are registered trademarks of the Chamberlain Group Inc.

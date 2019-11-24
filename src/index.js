@@ -1,12 +1,12 @@
-const ChamberlainAccessory = require('./chamberlain-accessory');
-const instance = require('./instance');
+const ChamberlainAccessory = require("./chamberlain-accessory");
+const instance = require("./instance");
 
 module.exports = homebridge => {
-  instance.homebridge = homebridge;
+    instance.homebridge = homebridge;
 
-  homebridge.registerAccessory(
-    'chamberlain',
-    'Chamberlain',
-    ChamberlainAccessory
-  );
+    homebridge.registerAccessory(
+        "chamberlain",
+        "Chamberlain",
+        ChamberlainAccessory
+    );
 };

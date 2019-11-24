@@ -1,119 +1,144 @@
-const _ = require('underscore');
-const Api = require('./api');
-const instance = require('./instance');
+const _ = require("underscore");
+const Api = require("./api");
+const instance = require("./instance");
 
 const ACTIVE_DELAY = 1000 * 2;
 const IDLE_DELAY = 1000 * 10;
 
 module.exports = class {
-  constructor(log, {deviceId, name, password, username}) {
-    this.log = log;
-    this.api = new Api({MyQDeviceId: deviceId, password, username});
+    constructor(log, {
+        deviceId,
+        name,
+        password,
+        username
+    }) {
+        this.log = log;
+        this.api = new Api({
+            MyQDeviceId: deviceId,
+            password, username
+        });
 
-    const {Service, Characteristic} = instance.homebridge.hap;
-    const {CurrentDoorState, TargetDoorState} = Characteristic;
+        const {
+            Service,
+            Characteristic
+        } = instance.homebridge.hap;
 
-    this.apiToHap = {
-      'open': CurrentDoorState.OPEN,
-      'closed': CurrentDoorState.CLOSED,
-    };
+        const {
+            CurrentDoorState,
+            TargetDoorState
+        } = Characteristic;
 
-    this.hapToApi = {
-      [TargetDoorState.OPEN]: 'open',
-      [TargetDoorState.CLOSED]: 'close'
-    };
+        this.apiToHap = {
+            "open": CurrentDoorState.OPEN,
+            "closed": CurrentDoorState.CLOSED,
+        };
 
-    this.hapToEnglish = {
-      [CurrentDoorState.OPEN]: 'open',
-      [CurrentDoorState.CLOSED]: 'closed',
-      [CurrentDoorState.OPENING]: 'opening',
-      [CurrentDoorState.CLOSING]: 'closing'
-    };
+        this.hapToApi = {
+            [TargetDoorState.OPEN]: "open",
+            [TargetDoorState.CLOSED]: "close"
+        };
 
-    this.currentToTarget = {
-      [CurrentDoorState.OPEN]: TargetDoorState.OPEN,
-      [CurrentDoorState.CLOSED]: TargetDoorState.CLOSED,
-      [CurrentDoorState.OPENING]: TargetDoorState.OPEN,
-      [CurrentDoorState.CLOSING]: TargetDoorState.CLOSED
-    };
+        this.hapToEnglish = {
+            [CurrentDoorState.OPEN]: "open",
+            [CurrentDoorState.CLOSED]: "closed",
+            [CurrentDoorState.OPENING]: "opening",
+            [CurrentDoorState.CLOSING]: "closing"
+        };
 
-    const service = this.service = new Service.GarageDoorOpener(name);
+        this.currentToTarget = {
+            [CurrentDoorState.OPEN]: TargetDoorState.OPEN,
+            [CurrentDoorState.CLOSED]: TargetDoorState.CLOSED,
+            [CurrentDoorState.OPENING]: TargetDoorState.OPEN,
+            [CurrentDoorState.CLOSING]: TargetDoorState.CLOSED
+        };
 
-    this.states = {
-      doorstate:
-        service
-          .getCharacteristic(Characteristic.CurrentDoorState)
-          .on('get', this.getCurrentDoorState.bind(this))
-          .on('change', this.logChange.bind(this, 'doorstate')),
-      desireddoorstate:
-        service
-          .getCharacteristic(Characteristic.TargetDoorState)
-          .on('set', this.setTargetDoorState.bind(this))
-          .on('change', this.logChange.bind(this, 'desireddoorstate'))
-    };
+        const service = this.service = new Service.GarageDoorOpener(name);
 
-    this.states.doorstate.value = CurrentDoorState.CLOSED;
-    this.states.desireddoorstate.value = TargetDoorState.CLOSED;
+        this.states = {
+            doorstate:
+                service.getCharacteristic(Characteristic.CurrentDoorState)
+                       .on("get", this.getCurrentDoorState.bind(this))
+                       .on("change", this.logChange.bind(this, "doorstate")),
+            desireddoorstate:
+                service.getCharacteristic(Characteristic.TargetDoorState)
+                       .on("set", this.setTargetDoorState.bind(this))
+                       .on("change", this.logChange.bind(this, "desireddoorstate"))
+        };
 
-    (this.poll = this.poll.bind(this))();
-  }
+        this.states.doorstate.value = CurrentDoorState.CLOSED;
+        this.states.desireddoorstate.value = TargetDoorState.CLOSED;
 
-  poll() {
-    clearTimeout(this.pollTimeoutId);
-    const {doorstate, desireddoorstate} = this.states;
-    return new Promise((resolve, reject) =>
-      doorstate.getValue(er => er ? reject(er) : resolve())
-    ).then(() =>
-      doorstate.value !== desireddoorstate.value ? ACTIVE_DELAY : IDLE_DELAY
-    ).catch(_.noop).then((delay = IDLE_DELAY) => {
-      clearTimeout(this.pollTimeoutId);
-      this.pollTimeoutId = setTimeout(this.poll, delay);
-    });
-  }
-
-  logChange(name, {oldValue, newValue}) {
-    const from = this.hapToEnglish[oldValue];
-    const to = this.hapToEnglish[newValue];
-    this.log.info(`${name} changed from ${from} to ${to}`);
-
-    if (name === 'doorstate') {
-      this.reactiveSetTargetDoorState = true;
-      this.states.desireddoorstate.setValue(this.currentToTarget[newValue]);
-      delete this.reactiveSetTargetDoorState;
+        (this.poll = this.poll.bind(this))();
     }
-  }
 
-  getErrorHandler(cb) {
-    return er => {
-      this.log.error(er);
-      cb(er);
-    };
-  }
+    poll() {
+        clearTimeout(this.pollTimeoutId);
 
-  getCurrentDoorState(cb) {
-    return this.api.getDeviceAttribute({name: 'door_state'})
-      .then(value =>{
-        cb(null, this.apiToHap[value])  
-      })
-      .catch(this.getErrorHandler(cb));
-  }
+        const {
+            doorstate,
+            desireddoorstate
+        } = this.states;
 
-  setTargetDoorState(value, cb) {
-    if (this.reactiveSetTargetDoorState) return cb();
+        return new Promise((resolve, reject) => doorstate.getValue(er => er ? reject(er) : resolve())).then(() => doorstate.value !== desireddoorstate.value ? ACTIVE_DELAY : IDLE_DELAY).catch(_.noop).then((delay = IDLE_DELAY) => {
+            clearTimeout(this.pollTimeoutId);
 
-    const action_type = this.hapToApi[value];
-    this.targetDoorState = value;
+            this.pollTimeoutId = setTimeout(this.poll, delay);
+        });
+    }
 
-    return this.api.actOnDevice({action_type})
-      .then(() => {
-        this.poll();
-        this.targetDoorState = null;
-        cb();
-      })
-      .catch(this.getErrorHandler(cb));
-  }
+    logChange(name, {
+        oldValue,
+        newValue
+    }) {
+        const from = this.hapToEnglish[oldValue];
+        const to = this.hapToEnglish[newValue];
 
-  getServices() {
-    return [this.service];
-  }
+        this.log.info(`${name} changed from ${from} to ${to}`);
+
+        if (name === "doorstate") {
+            this.reactiveSetTargetDoorState = true;
+            this.states.desireddoorstate.setValue(this.currentToTarget[newValue]);
+
+            delete this.reactiveSetTargetDoorState;
+        }
+    }
+
+    getErrorHandler(cb) {
+        return er => {
+            this.log.error(er);
+
+            cb(er);
+        };
+    }
+
+    getCurrentDoorState(cb) {
+        return this.api.getDeviceAttribute({
+            name: "door_state"
+        }).then(value => {
+            cb(null, this.apiToHap[value])
+        }).catch(this.getErrorHandler(cb));
+    }
+
+    setTargetDoorState(value, cb) {
+        if (this.reactiveSetTargetDoorState) {
+            return cb();
+        }
+
+        const action_type = this.hapToApi[value];
+
+        this.targetDoorState = value;
+
+        return this.api.actOnDevice({
+            action_type
+        }).then(() => {
+            this.poll();
+            this.targetDoorState = null;
+
+            cb();
+        }).catch(this.getErrorHandler(cb));
+    }
+
+    getServices() {
+        return [this.service];
+    }
 };

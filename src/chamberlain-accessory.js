@@ -13,6 +13,7 @@ module.exports = class {
         username
     }) {
         this.log = log;
+
         this.api = new Api({
             MyQDeviceId: deviceId,
             password, username

@@ -1,28 +1,23 @@
 const _ = require("underscore");
 const Api = require("./api");
-const instance = require("./instance");
 
 const ACTIVE_DELAY = 1000 * 2;
 const IDLE_DELAY = 1000 * 10;
 
-module.exports = class {
-    constructor(log, {
-        deviceId,
-        name,
-        password,
-        username
-    }) {
+module.exports = class ChamberlainAccessory {
+    constructor(log, config, homebridge) {
         this.log = log;
 
         this.api = new Api({
-            MyQDeviceId: deviceId,
-            password, username
+            MyQDeviceId: config.deviceId,
+            password: config.password,
+            username: config.username
         });
 
         const {
             Service,
             Characteristic
-        } = instance.homebridge.hap;
+        } = homebridge.hap;
 
         const {
             CurrentDoorState,
@@ -53,7 +48,7 @@ module.exports = class {
             [CurrentDoorState.CLOSING]: TargetDoorState.CLOSED
         };
 
-        const service = this.service = new Service.GarageDoorOpener(name);
+        const service = this.service = new Service.GarageDoorOpener(config.name);
 
         this.states = {
             doorstate:
@@ -80,44 +75,37 @@ module.exports = class {
             desireddoorstate
         } = this.states;
 
-        return new Promise((resolve, reject) => doorstate.getValue(er => er ? reject(er) : resolve())).then(() => doorstate.value !== desireddoorstate.value ? ACTIVE_DELAY : IDLE_DELAY).catch(_.noop).then((delay = IDLE_DELAY) => {
+        return new Promise((resolve, reject) => this.states.doorstate.getValue(er => er ? reject(er) : resolve())).then(() => this.states.doorstate.value !== this.states.desireddoorstate.value ? ACTIVE_DELAY : IDLE_DELAY).catch(_.noop).then((delay = IDLE_DELAY) => {
             clearTimeout(this.pollTimeoutId);
 
             this.pollTimeoutId = setTimeout(this.poll, delay);
         });
     }
 
-    logChange(name, {
-        oldValue,
-        newValue
-    }) {
-        const from = this.hapToEnglish[oldValue];
-        const to = this.hapToEnglish[newValue];
+    logChange(name, state) {
+        const from = this.hapToEnglish[state.oldValue];
+        const to = this.hapToEnglish[state.newValue];
 
         this.log.info(`${name} changed from ${from} to ${to}`);
 
         if (name === "doorstate") {
             this.reactiveSetTargetDoorState = true;
-            this.states.desireddoorstate.setValue(this.currentToTarget[newValue]);
+            this.states.desireddoorstate.setValue(this.currentToTarget[state.newValue]);
 
             delete this.reactiveSetTargetDoorState;
         }
     }
 
-    getErrorHandler(cb) {
-        return er => {
-            this.log.error(er);
-
-            cb(er);
-        };
-    }
-
     getCurrentDoorState(cb) {
         return this.api.getDeviceAttribute({
             name: "door_state"
-        }).then(value => {
+        }).then((value) => {
             cb(null, this.apiToHap[value])
-        }).catch(this.getErrorHandler(cb));
+        }).catch((er) => {
+            this.log.error(er);
+
+            cb(er);
+        });
     }
 
     setTargetDoorState(value, cb) {
@@ -136,7 +124,11 @@ module.exports = class {
             this.targetDoorState = null;
 
             cb();
-        }).catch(this.getErrorHandler(cb));
+        }).catch((er) => {
+            this.log.error(er);
+
+            cb(er);
+        });
     }
 
     getServices() {
